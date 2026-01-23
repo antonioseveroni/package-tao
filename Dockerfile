@@ -1,10 +1,12 @@
 FROM php:8.1-apache
 
-# Accept COMPOSER_AUTH as build argument
+# 1. Argomenti e variabili d'ambiente per Composer/Node
 ARG COMPOSER_AUTH
 ENV COMPOSER_AUTH=${COMPOSER_AUTH}
+ENV NVM_DIR=/root/.nvm
+ENV NODE_VERSION=14.21.3
 
-# Install system dependencies
+# 2. Installazione dipendenze di sistema
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -13,9 +15,12 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libfreetype6-dev \
     curl \
+    libxml2-dev \
+    libicu-dev \
+    libonig-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions
+# 3. Installazione estensioni PHP (incluse quelle necessarie per TAO)
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
     zip \
@@ -23,11 +28,12 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     mysqli \
     pdo \
     pdo_mysql \
-    opcache
+    opcache \
+    intl \
+    xml \
+    mbstring
 
-# Install Node.js 14 via NVM
-ENV NVM_DIR=/root/.nvm
-ENV NODE_VERSION=14.21.3
+# 4. Installazione Node.js 14 via NVM
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash && \
     . "$NVM_DIR/nvm.sh" && \
     nvm install $NODE_VERSION && \
@@ -36,31 +42,60 @@ RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | b
 ENV NODE_PATH=$NVM_DIR/versions/node/v$NODE_VERSION/lib/node_modules
 ENV PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 
-# Install Composer
+# 5. Installazione Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set working directory
+# 6. Configurazione directory di lavoro e copia file
 WORKDIR /var/www/html
-
-# Copy application files
 COPY . .
 
-# Configure git and install dependencies
+# 7. Installazione dipendenze dell'applicazione
 RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
     git config --global url."https://".insteadOf "git://" && \
     composer install --no-dev --optimize-autoloader --no-interaction
 
-# Fix Apache MPM configuration
-RUN a2dismod mpm_event || true && \
-    a2dismod mpm_worker || true && \
-    a2dismod mpm_prefork || true && \
-    a2enmod mpm_prefork && \
-    a2enmod rewrite
+# 8. Configurazione Apache (abilitazione moduli necessari)
+RUN a2enmod rewrite
 
-# Set proper permissions
-RUN chown -R www-data:www-data /var/www/html
+# 9. Permessi per TAO (data e config devono essere scrivibili)
+RUN chown -R www-data:www-data /var/www/html && \
+    chmod -R 775 /var/www/html/data /var/www/html/config
 
-# Expose port
-EXPOSE 80
-
-CMD ["apache2-foreground"]
+# 10. CMD: Script di avvio che corregge gli errori a runtime
+CMD ["/bin/sh", "-c", " \
+    # FIX MPM: Rimuove i moduli in conflitto prima di avviare
+    rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* || true; \
+    a2enmod mpm_prefork || true; \
+    \
+    # Configurazione dinamica della porta Railway
+    sed -i 's/80/${PORT}/g' /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf; \
+    \
+    # Silenzia errori Deprecated per PHP 8.1
+    echo 'error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT' > /usr/local/etc/php/conf.d/error_logging.ini; \
+    \
+    # Test connessione DB e installazione
+    echo 'Verifica connessione al database...'; \
+    php -r \"\$c=@mysqli_connect('${MYSQLHOST}', '${MYSQLUSER}', '${MYSQLPASSWORD}', '${MYSQLDATABASE}', '${MYSQLPORT}'); if(!\$c){echo 'ERRORE: Database non raggiungibile'.PHP_EOL; exit(1);} echo 'Database connesso!'.PHP_EOL;\"; \
+    \
+    if [ $? -eq 0 ]; then \
+        if [ ! -f /var/www/html/config/generis/database.conf.php ]; then \
+            echo 'Inizio installazione TAO...'; \
+            php /var/www/html/tao/scripts/taoInstall.php \
+            --db_driver pdo_mysql \
+            --db_host ${MYSQLHOST} \
+            --db_port ${MYSQLPORT} \
+            --db_name ${MYSQLDATABASE} \
+            --db_user ${MYSQLUSER} \
+            --db_pass ${MYSQLPASSWORD} \
+            --module_namespace http://sample/first.rdf \
+            --module_url https://${RAILWAY_STATIC_URL:-localhost} \
+            --user_login admin \
+            --user_pass admin \
+            -vvv -e taoCe; \
+        else \
+            echo 'TAO risulta gia configurato.'; \
+        fi; \
+    fi; \
+    \
+    echo 'Avvio Apache...'; \
+    exec apache2-foreground"]
