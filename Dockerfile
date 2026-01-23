@@ -18,9 +18,11 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 COPY . .
 
-# 5. Installazione dipendenze (Usa la tua repo pulita)
+# 5. Installazione dipendenze con pulizia cache
 RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
-    composer install --no-dev --optimize-autoloader --no-interaction
+    rm -f composer.lock && \
+    composer clear-cache && \
+    composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # 6. Permessi e Mod rewrite
 RUN a2enmod rewrite && \
