@@ -86,7 +86,11 @@ if [ ! -f /var/www/html/config/generis/database.conf.php ]; then
     --user_login admin \
     --user_pass admin \
     -vvv -e taoCe
-    cd /var/www/html && composer run-script post-install-cmd || true
+fi
+
+if [ -f /var/www/html/config/generis/database.conf.php ]; then
+    cd /var/www/html
+    php tao/scripts/taoUpdate.php -vv || true
 fi
 
 apache2-foreground
