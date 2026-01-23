@@ -12,6 +12,20 @@ RUN apt-get update && apt-get install -y \
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) zip gd mysqli pdo pdo_mysql opcache intl xml mbstring
 
+# Imposta le variabili d'ambiente per NVM e Node
+ENV NVM_DIR=/root/.nvm
+ENV NODE_VERSION=14.21.3
+
+# Installa NVM e Node.js 14
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash \
+    && . $NVM_DIR/nvm.sh \
+    && nvm install $NODE_VERSION \
+    && nvm alias default $NODE_VERSION \
+    && nvm use default
+
+# Aggiunge i binari di Node al PATH
+ENV PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
+
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
