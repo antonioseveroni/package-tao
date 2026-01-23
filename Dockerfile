@@ -50,22 +50,32 @@ RUN a2enmod rewrite && \
     chown -R www-data:www-data /var/www/html && \
     chmod -R 775 /var/www/html/data /var/www/html/config
 
-CMD a2dismod mpm_event mpm_worker 2>/dev/null || true; \
-    a2enmod mpm_prefork; \
-    sed -i "s/Listen 80/Listen 8080/g" /etc/apache2/ports.conf; \
-    sed -i "s/<VirtualHost \*:80>/<VirtualHost \*:8080>/g" /etc/apache2/sites-available/000-default.conf; \
-    if [ ! -f /var/www/html/config/generis/database.conf.php ]; then \
-        php /var/www/html/tao/scripts/taoInstall.php \
-        --db_driver pdo_mysql \
-        --db_host ${MYSQLHOST} \
-        --db_port ${MYSQLPORT} \
-        --db_name ${MYSQLDATABASE} \
-        --db_user ${MYSQLUSER} \
-        --db_pass ${MYSQLPASSWORD} \
-        --module_namespace http://sample/first.rdf \
-        --module_url https://${RAILWAY_STATIC_URL:-localhost} \
-        --user_login admin \
-        --user_pass admin \
-        -vvv -e taoCe; \
-    fi; \
-    apache2-foreground
+# Configura Apache durante il build
+RUN sed -i "s/Listen 80/Listen 8080/g" /etc/apache2/ports.conf && \
+    sed -i "s/<VirtualHost \*:80>/<VirtualHost \*:8080>/g" /etc/apache2/sites-available/000-default.conf && \
+    a2dismod mpm_event mpm_worker 2>/dev/null || true && \
+    a2enmod mpm_prefork
+
+# Script di avvio
+COPY <<'EOF' /start.sh
+#!/bin/bash
+if [ ! -f /var/www/html/config/generis/database.conf.php ]; then
+    php /var/www/html/tao/scripts/taoInstall.php \
+    --db_driver pdo_mysql \
+    --db_host ${MYSQLHOST} \
+    --db_port ${MYSQLPORT} \
+    --db_name ${MYSQLDATABASE} \
+    --db_user ${MYSQLUSER} \
+    --db_pass ${MYSQLPASSWORD} \
+    --module_namespace http://sample/first.rdf \
+    --module_url https://${RAILWAY_STATIC_URL:-localhost} \
+    --user_login admin \
+    --user_pass admin \
+    -vvv -e taoCe
+fi
+apache2-foreground
+EOF
+
+RUN chmod +x /start.sh
+
+CMD ["/start.sh"]
