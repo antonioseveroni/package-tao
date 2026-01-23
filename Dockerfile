@@ -25,15 +25,9 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     pdo_mysql \
     opcache
 
-# Install Node.js 14 via NVM
-SHELL ["/bin/bash", "-c"]
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash && \
-    source "$HOME/.nvm/nvm.sh" && \
-    nvm install 14 && \
-    nvm use 14 && \
-    nvm alias default 14 && \
-    ln -s "$HOME/.nvm/versions/node/v14.*/bin/node" /usr/local/bin/node && \
-    ln -s "$HOME/.nvm/versions/node/v14.*/bin/npm" /usr/local/bin/npm
+# Install Node.js 14
+RUN curl -fsSL https://deb.nodesource.com/setup_14.x | bash - && \
+    apt-get install -y nodejs
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
