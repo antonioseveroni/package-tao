@@ -1,4 +1,6 @@
 FROM php:8.1-apache
+
+# Dichiarazione ARG per il build
 ARG GITHUB_TOKEN
 ENV GITHUB_TOKEN=$GITHUB_TOKEN
 
@@ -16,15 +18,18 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 # 3. Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 4. Directory di lavoro e copia file
+# 4. Directory di lavoro
 WORKDIR /var/www/html
 COPY . .
 
 # 5. Configurazione Auth e Installazione dipendenze
-ARG GITHUB_TOKEN
-RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
+# Assicuriamoci che la directory home di composer esista e sia scrivibile
+RUN mkdir -p /root/.composer && \
+    git config --global url."https://github.com/".insteadOf "git@github.com:" && \
     if [ -n "$GITHUB_TOKEN" ]; then \
         composer config --global github-oauth.github.com "$GITHUB_TOKEN"; \
+    else \
+        echo "Warning: GITHUB_TOKEN is not set"; \
     fi && \
     rm -f composer.lock && \
     composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
