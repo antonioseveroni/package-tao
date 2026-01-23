@@ -59,7 +59,7 @@ CMD rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_wo
         echo "Tabelle trovate. Pulizia cache..."; \
         rm -rf /var/www/html/data/generis/cache/* || true; \
     else \
-        echo "Inizio installazione TAO..."; \
+        echo "Inizio installazione TAO con estensione INVALSI..."; \
         php /var/www/html/tao/scripts/taoInstall.php \
         --db_driver pdo_mysql \
         --db_host ${MYSQLHOST} \
@@ -71,7 +71,7 @@ CMD rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_wo
         --module_url https://${RAILWAY_STATIC_URL:-localhost} \
         --user_login admin \
         --user_pass admin \
-        -vvv -e taoCe; \
+        -vvv -e taoCe,taoInvalsi; \
     fi; \
     chown -R www-data:www-data /var/www/html/data /var/www/html/config /var/www/html/models; \
     chmod -R 775 /var/www/html/data /var/www/html/config; \
