@@ -44,19 +44,17 @@ RUN git config --global url."https://github.com/".insteadOf "git@github.com:" &&
 # 8. Abilita Rewrite
 RUN a2enmod rewrite
 
-# 9. Permessi
+# 9. Permessi iniziali
 RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 775 /var/www/html/data /var/www/html/config
 
-# 10. CMD: Gestione post-installazione, Permessi e Avvio
+# 10. CMD: Script di avvio pulito e senza commenti interni
 CMD rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* || true; \
     a2enmod mpm_prefork || true; \
     sed -i "s/Listen 80/Listen 8080/g" /etc/apache2/ports.conf; \
     sed -i "s/<VirtualHost \*:80>/<VirtualHost \*:8080>/g" /etc/apache2/sites-available/000-default.conf; \
-    \
-    # Se le tabelle ci sono già, non reinstalliamo ma puliamo la cache
     if [ -f /var/www/html/config/generis/database.conf.php ]; then \
-        echo "Tabelle trovate. Pulizia cache e aggiornamento permessi..."; \
+        echo "Tabelle trovate. Pulizia cache..."; \
         rm -rf /var/www/html/data/generis/cache/* || true; \
     else \
         echo "Inizio installazione TAO..."; \
@@ -73,10 +71,7 @@ CMD rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_wo
         --user_pass admin \
         -vvv -e taoCe; \
     fi; \
-    \
-    # FONDAMENTALE: Ripristina i permessi per Apache dopo che PHP ha creato i file
     chown -R www-data:www-data /var/www/html/data /var/www/html/config /var/www/html/models; \
     chmod -R 775 /var/www/html/data /var/www/html/config; \
-    \
     echo "Avvio Apache sulla porta 8080..."; \
     apache2-foreground
