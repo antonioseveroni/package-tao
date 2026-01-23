@@ -1,6 +1,6 @@
 FROM php:8.1-apache
 
-# 1. Argomenti e variabili d'ambiente per Composer/Node
+# 1. Argomenti e variabili d'ambiente
 ARG COMPOSER_AUTH
 ENV COMPOSER_AUTH=${COMPOSER_AUTH}
 ENV NVM_DIR=/root/.nvm
@@ -20,72 +20,59 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 3. Installazione estensioni PHP (incluse quelle necessarie per TAO)
+# 3. Estensioni PHP
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
-    zip \
-    gd \
-    mysqli \
-    pdo \
-    pdo_mysql \
-    opcache \
-    intl \
-    xml \
-    mbstring
+    zip gd mysqli pdo pdo_mysql opcache intl xml mbstring
 
-# 4. Installazione Node.js 14 via NVM
+# 4. Node.js 14
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash && \
-    . "$NVM_DIR/nvm.sh" && \
-    nvm install $NODE_VERSION && \
-    nvm alias default $NODE_VERSION && \
-    nvm use default
-ENV NODE_PATH=$NVM_DIR/versions/node/v$NODE_VERSION/lib/node_modules
+    . "$NVM_DIR/nvm.sh" && nvm install $NODE_VERSION && nvm alias default $NODE_VERSION
 ENV PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 
-# 5. Installazione Composer
+# 5. Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 6. Configurazione directory di lavoro e copia file
+# 6. Directory di lavoro
 WORKDIR /var/www/html
 COPY . .
 
-# 7. Installazione dipendenze dell'applicazione
+# 7. Dipendenze applicazione
 RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
-    git config --global url."https://".insteadOf "git://" && \
     composer install --no-dev --optimize-autoloader --no-interaction
 
-# 8. Configurazione Apache (abilitazione moduli necessari)
+# 8. Abilita Rewrite
 RUN a2enmod rewrite
 
-# 9. Permessi per TAO (data e config devono essere scrivibili)
+# 9. Permessi
 RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 775 /var/www/html/data /var/www/html/config
 
-# 10. CMD: Script di avvio corretto
+# 10. CMD: Forza porta 8080 e avvia
 CMD rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* || true; \
     a2enmod mpm_prefork || true; \
-    sed -i "s/80/${PORT}/g" /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf; \
-    echo "error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT" > /usr/local/etc/php/conf.d/error_logging.ini; \
+    # Forza la porta 8080 nei file di Apache
+    sed -i "s/Listen 80/Listen 8080/g" /etc/apache2/ports.conf; \
+    sed -i "s/<VirtualHost \*:80>/<VirtualHost \*:8080>/g" /etc/apache2/sites-available/000-default.conf; \
+    \
     echo "Verifica connessione al database..."; \
     php -r "\$c=@mysqli_connect('${MYSQLHOST}', '${MYSQLUSER}', '${MYSQLPASSWORD}', '${MYSQLDATABASE}', '${MYSQLPORT}'); if(!\$c){echo 'ERRORE: Database non raggiungibile'.PHP_EOL; exit(1);} echo 'Database connesso!'.PHP_EOL;"; \
-    if [ $? -eq 0 ]; then \
-        if [ ! -f /var/www/html/config/generis/database.conf.php ]; then \
-            echo "Inizio installazione TAO..."; \
-            php /var/www/html/tao/scripts/taoInstall.php \
-            --db_driver pdo_mysql \
-            --db_host ${MYSQLHOST} \
-            --db_port ${MYSQLPORT} \
-            --db_name ${MYSQLDATABASE} \
-            --db_user ${MYSQLUSER} \
-            --db_pass ${MYSQLPASSWORD} \
-            --module_namespace http://sample/first.rdf \
-            --module_url https://${RAILWAY_STATIC_URL:-localhost} \
-            --user_login admin \
-            --user_pass admin \
-            -vvv -e taoCe; \
-        else \
-            echo "TAO risulta gia configurato."; \
-        fi; \
+    \
+    if [ ! -f /var/www/html/config/generis/database.conf.php ]; then \
+        echo "Inizio installazione TAO..."; \
+        php /var/www/html/tao/scripts/taoInstall.php \
+        --db_driver pdo_mysql \
+        --db_host ${MYSQLHOST} \
+        --db_port ${MYSQLPORT} \
+        --db_name ${MYSQLDATABASE} \
+        --db_user ${MYSQLUSER} \
+        --db_pass ${MYSQLPASSWORD} \
+        --module_namespace http://sample/first.rdf \
+        --module_url https://${RAILWAY_STATIC_URL:-localhost} \
+        --user_login admin \
+        --user_pass admin \
+        -vvv -e taoCe; \
     fi; \
-    echo "Avvio Apache..."; \
+    \
+    echo "Avvio Apache sulla porta 8080..."; \
     apache2-foreground
