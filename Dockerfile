@@ -1,4 +1,6 @@
 FROM php:8.1-apache
+ARG GITHUB_TOKEN
+ENV GITHUB_TOKEN=$GITHUB_TOKEN
 
 # 1. Installazione dipendenze di sistema
 RUN apt-get update && apt-get install -y \
