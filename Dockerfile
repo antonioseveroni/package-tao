@@ -73,7 +73,12 @@ rm -f /etc/apache2/mods-enabled/mpm_event.load \
 # Assicurati che mpm_prefork sia abilitato
 a2enmod mpm_prefork 2>/dev/null || true
 
+# Sostituisci il vecchio blocco IF con questo:
 if [ ! -f /var/www/html/config/generis/database.conf.php ]; then
+    echo "Configurazione non trovata o incompleta. Reset cartelle..."    
+    rm -f /var/www/html/config/generis/*.php 
+    rm -rf /var/www/html/data/generis/cache/*
+    
     php /var/www/html/tao/scripts/taoInstall.php \
     --db_driver pdo_mysql \
     --db_host ${MYSQLHOST} \
@@ -85,10 +90,7 @@ if [ ! -f /var/www/html/config/generis/database.conf.php ]; then
     --module_url https://${RAILWAY_STATIC_URL:-localhost} \
     --user_login admin \
     --user_pass admin \
-    -vvv -e taoCe
-    
-    # Fix missing services
-    php /var/www/html/fix-services.php
+    -vvv -e taoCe,taoInvalsi
 fi
 
 # Verifica e rigenera la cache se necessario
