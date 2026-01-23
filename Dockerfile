@@ -42,7 +42,9 @@ RUN a2enmod rewrite && \
     chown -R www-data:www-data /var/www/html && \
     chmod -R 775 /var/www/html/data /var/www/html/config
 
-CMD sed -i "s/Listen 80/Listen 8080/g" /etc/apache2/ports.conf; \
+CMD a2dismod mpm_event mpm_worker 2>/dev/null || true; \
+    a2enmod mpm_prefork; \
+    sed -i "s/Listen 80/Listen 8080/g" /etc/apache2/ports.conf; \
     sed -i "s/<VirtualHost \*:80>/<VirtualHost \*:8080>/g" /etc/apache2/sites-available/000-default.conf; \
     if [ ! -f /var/www/html/config/generis/database.conf.php ]; then \
         php /var/www/html/tao/scripts/taoInstall.php \
