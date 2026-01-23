@@ -61,25 +61,16 @@ RUN a2enmod rewrite
 RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 775 /var/www/html/data /var/www/html/config
 
-# 10. CMD: Script di avvio che corregge gli errori a runtime
-CMD ["/bin/sh", "-c", " \
-    # FIX MPM: Rimuove i moduli in conflitto prima di avviare
-    rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* || true; \
+# 10. CMD: Script di avvio corretto
+CMD rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* || true; \
     a2enmod mpm_prefork || true; \
-    \
-    # Configurazione dinamica della porta Railway
-    sed -i 's/80/${PORT}/g' /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf; \
-    \
-    # Silenzia errori Deprecated per PHP 8.1
-    echo 'error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT' > /usr/local/etc/php/conf.d/error_logging.ini; \
-    \
-    # Test connessione DB e installazione
-    echo 'Verifica connessione al database...'; \
-    php -r \"\$c=@mysqli_connect('${MYSQLHOST}', '${MYSQLUSER}', '${MYSQLPASSWORD}', '${MYSQLDATABASE}', '${MYSQLPORT}'); if(!\$c){echo 'ERRORE: Database non raggiungibile'.PHP_EOL; exit(1);} echo 'Database connesso!'.PHP_EOL;\"; \
-    \
+    sed -i "s/80/${PORT}/g" /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf; \
+    echo "error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT" > /usr/local/etc/php/conf.d/error_logging.ini; \
+    echo "Verifica connessione al database..."; \
+    php -r "\$c=@mysqli_connect('${MYSQLHOST}', '${MYSQLUSER}', '${MYSQLPASSWORD}', '${MYSQLDATABASE}', '${MYSQLPORT}'); if(!\$c){echo 'ERRORE: Database non raggiungibile'.PHP_EOL; exit(1);} echo 'Database connesso!'.PHP_EOL;"; \
     if [ $? -eq 0 ]; then \
         if [ ! -f /var/www/html/config/generis/database.conf.php ]; then \
-            echo 'Inizio installazione TAO...'; \
+            echo "Inizio installazione TAO..."; \
             php /var/www/html/tao/scripts/taoInstall.php \
             --db_driver pdo_mysql \
             --db_host ${MYSQLHOST} \
@@ -93,9 +84,8 @@ CMD ["/bin/sh", "-c", " \
             --user_pass admin \
             -vvv -e taoCe; \
         else \
-            echo 'TAO risulta gia configurato.'; \
+            echo "TAO risulta gia configurato."; \
         fi; \
     fi; \
-    \
-    echo 'Avvio Apache...'; \
-    exec apache2-foreground"]
+    echo "Avvio Apache..."; \
+    apache2-foreground
