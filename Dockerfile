@@ -86,8 +86,12 @@ if [ ! -f /var/www/html/config/generis/database.conf.php ]; then
     --user_login admin \
     --user_pass admin \
     -vvv -e taoCe
+    
+    # Fix missing services
+    php /var/www/html/fix-services.php
 fi
 
+# Verifica e rigenera la cache se necessario
 if [ -f /var/www/html/config/generis/database.conf.php ]; then
     cd /var/www/html
     php tao/scripts/taoUpdate.php -vv || true
