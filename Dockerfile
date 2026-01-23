@@ -36,12 +36,11 @@ COPY . .
 RUN mkdir -p data config/generis && \
     chmod -R 775 data config
 
-
 # Configurazione Git e Installazione dipendenze
 RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
     git config --global url."https://".insteadOf "git://" && \
     rm -f composer.lock && \
-    composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+    composer install --no-dev --optimize-autoloader --no-interaction
 
 # Esegui gli script post-install di composer
 RUN composer run-script post-install-cmd || true
@@ -86,6 +85,7 @@ if [ ! -f /var/www/html/config/generis/database.conf.php ]; then
     --user_login admin \
     --user_pass admin \
     -vvv -e taoCe
+    cd /var/www/html && composer run-script post-install-cmd || true
 fi
 
 apache2-foreground
