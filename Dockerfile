@@ -37,7 +37,8 @@ RUN mkdir -p data config/generis && \
     chmod -R 775 data config
 
 # Configurazione Git e Installazione dipendenze
-RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
+RUN export PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH && \
+    git config --global url."https://github.com/".insteadOf "git@github.com:" && \
     git config --global url."https://".insteadOf "git://" && \
     rm -f composer.lock && \
     composer install --no-dev --optimize-autoloader --no-interaction
