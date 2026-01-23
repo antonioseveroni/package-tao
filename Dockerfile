@@ -60,8 +60,19 @@ RUN rm -f /etc/apache2/mods-enabled/mpm_event.load \
     sed -i "s/<VirtualHost \*:80>/<VirtualHost \*:8080>/g" /etc/apache2/sites-available/000-default.conf
 
 # Script di avvio
+# Script di avvio
 COPY <<'EOF' /start.sh
 #!/bin/bash
+
+# Disabilita forzatamente tutti gli MPM tranne prefork
+rm -f /etc/apache2/mods-enabled/mpm_event.load \
+      /etc/apache2/mods-enabled/mpm_event.conf \
+      /etc/apache2/mods-enabled/mpm_worker.load \
+      /etc/apache2/mods-enabled/mpm_worker.conf
+
+# Assicurati che mpm_prefork sia abilitato
+a2enmod mpm_prefork 2>/dev/null || true
+
 if [ ! -f /var/www/html/config/generis/database.conf.php ]; then
     php /var/www/html/tao/scripts/taoInstall.php \
     --db_driver pdo_mysql \
@@ -76,6 +87,7 @@ if [ ! -f /var/www/html/config/generis/database.conf.php ]; then
     --user_pass admin \
     -vvv -e taoCe
 fi
+
 apache2-foreground
 EOF
 
