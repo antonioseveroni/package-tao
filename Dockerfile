@@ -21,6 +21,16 @@ RUN apt-get update && apt-get install -y \
     pdo_mysql \
     opcache
 
+
+# Install Node.js 14 via NVM
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash && \
+    export NVM_DIR="$HOME/.nvm" && \
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && \
+    nvm install 14 && \
+    nvm use 14 && \
+    ln -s "$NVM_DIR/versions/node/$(nvm version)/bin/node" /usr/local/bin/node && \
+    ln -s "$NVM_DIR/versions/node/$(nvm version)/bin/npm" /usr/local/bin/npm
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
