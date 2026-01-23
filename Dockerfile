@@ -26,9 +26,10 @@ WORKDIR /var/www/html
 # Copy application files
 COPY . .
 
-# Install dependencies
-COPY composer-setup.sh .
-RUN chmod +x composer-setup.sh && ./composer-setup.sh
+# Configure git and composer to use HTTPS
+RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
+    git config --global url."https://".insteadOf "git://" && \
+    composer install --no-dev --optimize-autoloader --no-interaction
 
 # Apache configuration
 RUN a2enmod rewrite
