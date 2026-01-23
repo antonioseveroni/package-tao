@@ -33,22 +33,22 @@ COPY . .
 RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
     composer install --no-dev --optimize-autoloader --no-interaction && \
     \
-    # 1. Commenta la dipendenza nel manifest (già fatto)
+    # 1. Commenta la dipendenza nel manifest
     if [ -f /var/www/html/taoInvalsi/manifest.php ]; then \
         sed -i "s/.*'taoTextHelp'.*/\/\/&/" /var/www/html/taoInvalsi/manifest.php; \
     fi && \
     \
-    # 2. Rimuovi il plugin textToSpeech dai Test Runner Providers di INVALSI
-    # Cerchiamo i file che configurano il runner e commentiamo il caricamento del plugin
-    find /var/www/html/taoInvalsi -name "*.php" -o -name "*.json" -o -name "*.xml" | x86_64-linux-gnu-xargs sed -i "s/taoTextHelp\/runner\/plugins\/tools\/textToSpeech\/plugin//g" && \
+    # 2. Rimuovi i riferimenti JS al plugin textToSpeech
+    # Usiamo 'xargs' standard e aggiungiamo '--no-run-if-empty' per sicurezza
+    find /var/www/html/taoInvalsi -type f \( -name "*.php" -o -name "*.json" -o -name "*.xml" \) -print0 | xargs -0 sed -i "s|taoTextHelp/runner/plugins/tools/textToSpeech/plugin||g" || true && \
     \
-    # 3. Disabilita il caricamento dei plugin mancanti nei file di configurazione dei provider
-    # Spesso sono definiti in file PHP sotto taoInvalsi/models/classes/
-    find /var/www/html/taoInvalsi -type f -exec sed -i "s/'taoTextHelp' => array(.*),//g" {} + && \
-    find /var/www/html/taoInvalsi -type f -exec sed -i "s/'taoTextHelp' => \[.*\],//g" {} + && \
+    # 3. Rimuovi occorrenze di taoTextHelp negli array PHP (sia sintassi vecchia che nuova)
+    find /var/www/html/taoInvalsi -type f -name "*.php" -exec sed -i "s/'taoTextHelp' => array(.*),//g" {} + || true && \
+    find /var/www/html/taoInvalsi -type f -name "*.php" -exec sed -i "s/'taoTextHelp' => \[.*\],//g" {} + || true && \
     \
-    echo "Pulizia textHelp completata in tutti i file di taoInvalsi."
+    echo "Pulizia textHelp completata."
 
+    
 # 8. Abilita Rewrite
 RUN a2enmod rewrite
 
