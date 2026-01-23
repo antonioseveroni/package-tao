@@ -4,7 +4,7 @@ FROM php:8.1-apache
 ARG COMPOSER_AUTH
 ENV COMPOSER_AUTH=${COMPOSER_AUTH}
 
-# Install system dependencies and PHP extensions
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -12,7 +12,11 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
     zip \
     gd \
@@ -21,15 +25,15 @@ RUN apt-get update && apt-get install -y \
     pdo_mysql \
     opcache
 
-
 # Install Node.js 14 via NVM
+SHELL ["/bin/bash", "-c"]
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash && \
-    export NVM_DIR="$HOME/.nvm" && \
-    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && \
+    source "$HOME/.nvm/nvm.sh" && \
     nvm install 14 && \
     nvm use 14 && \
-    ln -s "$NVM_DIR/versions/node/$(nvm version)/bin/node" /usr/local/bin/node && \
-    ln -s "$NVM_DIR/versions/node/$(nvm version)/bin/npm" /usr/local/bin/npm
+    nvm alias default 14 && \
+    ln -s "$HOME/.nvm/versions/node/v14.*/bin/node" /usr/local/bin/node && \
+    ln -s "$HOME/.nvm/versions/node/v14.*/bin/npm" /usr/local/bin/npm
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -40,13 +44,16 @@ WORKDIR /var/www/html
 # Copy application files
 COPY . .
 
-# Configure git and composer to use HTTPS
+# Configure git and install dependencies
 RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
     git config --global url."https://".insteadOf "git://" && \
     composer install --no-dev --optimize-autoloader --no-interaction
 
 # Apache configuration
 RUN a2enmod rewrite
+
+# Set proper permissions
+RUN chown -R www-data:www-data /var/www/html
 
 # Expose port
 EXPOSE 80
