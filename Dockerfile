@@ -51,7 +51,8 @@ RUN git config --global url."https://github.com/".insteadOf "git@github.com:" &&
     composer install --no-dev --optimize-autoloader --no-interaction
 
 # Apache configuration
-RUN a2enmod rewrite
+RUN a2dismod mpm_event mpm_worker && \
+    a2enmod mpm_prefork rewrite
 
 # Set proper permissions
 RUN chown -R www-data:www-data /var/www/html
