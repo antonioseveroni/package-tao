@@ -18,10 +18,13 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 COPY . .
 
-# 5. Installazione dipendenze con pulizia cache
+# 5. Configurazione Auth e Installazione dipendenze
+ARG GITHUB_TOKEN
 RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
+    if [ -n "$GITHUB_TOKEN" ]; then \
+        composer config --global github-oauth.github.com "$GITHUB_TOKEN"; \
+    fi && \
     rm -f composer.lock && \
-    composer clear-cache && \
     composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # 6. Permessi e Mod rewrite
