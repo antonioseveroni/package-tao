@@ -17,13 +17,12 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 COPY . .
 
-# --- SEZIONE CRITICA ---
-# Creiamo il file auth.json manualmente prima di installare
-RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
-    echo "{\"github-oauth\": {\"github.com\": \"$GITHUB_TOKEN\"}}" > /root/.composer/auth.json && \
+# 5. Configurazione Auth e Installazione dipendenze
+RUN mkdir -p /root/.composer && \
+    git config --global url."https://github.com/".insteadOf "git@github.com:" && \
+    composer config --global github-oauth.github.com "$GITHUB_TOKEN" && \
     rm -f composer.lock && \
     composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
-# -----------------------
 
 RUN a2enmod rewrite && \
     chown -R www-data:www-data /var/www/html && \
