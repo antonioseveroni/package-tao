@@ -1,70 +1,38 @@
 FROM php:8.1-apache
 
-# 1. Argomenti e variabili d'ambiente
-ARG COMPOSER_AUTH
-ENV COMPOSER_AUTH=${COMPOSER_AUTH}
-ENV NVM_DIR=/root/.nvm
-ENV NODE_VERSION=14.21.3
-
-# 2. Installazione dipendenze di sistema
+# 1. Installazione dipendenze di sistema
 RUN apt-get update && apt-get install -y \
     git unzip libzip-dev libpng-dev libjpeg-dev libfreetype6-dev \
     curl libxml2-dev libicu-dev libonig-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 3. Estensioni PHP
+# 2. Estensioni PHP
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
     zip gd mysqli pdo pdo_mysql opcache intl xml mbstring
 
-# 4. Node.js 14
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash && \
-    . "$NVM_DIR/nvm.sh" && nvm install $NODE_VERSION && nvm alias default $NODE_VERSION
-ENV PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
-
-# 5. Composer
+# 3. Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 6. Directory di lavoro e copia file
+# 4. Directory di lavoro e copia file
 WORKDIR /var/www/html
 COPY . .
 
-# 7. Installazione dipendenze e PULIZIA TOTALE TEXTHELP
+# 5. Installazione dipendenze (Usa la tua repo pulita)
 RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
-    composer install --no-dev --optimize-autoloader --no-interaction && \
-    \
-    # 1. Commenta la dipendenza nel manifest
-    if [ -f /var/www/html/taoInvalsi/manifest.php ]; then \
-        sed -i "s/.*'taoTextHelp'.*/\/\/&/" /var/www/html/taoInvalsi/manifest.php; \
-    fi && \
-    \
-    # 2. Rimuovi i riferimenti JS al plugin textToSpeech
-    # Usiamo 'xargs' standard e aggiungiamo '--no-run-if-empty' per sicurezza
-    find /var/www/html/taoInvalsi -type f \( -name "*.php" -o -name "*.json" -o -name "*.xml" \) -print0 | xargs -0 sed -i "s|taoTextHelp/runner/plugins/tools/textToSpeech/plugin||g" || true && \
-    \
-    # 3. Rimuovi occorrenze di taoTextHelp negli array PHP (sia sintassi vecchia che nuova)
-    find /var/www/html/taoInvalsi -type f -name "*.php" -exec sed -i "s/'taoTextHelp' => array(.*),//g" {} + || true && \
-    find /var/www/html/taoInvalsi -type f -name "*.php" -exec sed -i "s/'taoTextHelp' => \[.*\],//g" {} + || true && \
-    \
-    echo "Pulizia textHelp completata."
+    composer install --no-dev --optimize-autoloader --no-interaction
 
-    
-# 8. Abilita Rewrite
-RUN a2enmod rewrite
-
-# 9. Permessi iniziali
-RUN chown -R www-data:www-data /var/www/html && \
+# 6. Permessi e Mod rewrite
+RUN a2enmod rewrite && \
+    chown -R www-data:www-data /var/www/html && \
     chmod -R 775 /var/www/html/data /var/www/html/config
 
-# 10. CMD: Script di avvio finale
-CMD rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* || true; \
-    a2enmod mpm_prefork || true; \
-    sed -i "s/Listen 80/Listen 8080/g" /etc/apache2/ports.conf; \
+# 7. CMD: Avvio e Installazione
+CMD sed -i "s/Listen 80/Listen 8080/g" /etc/apache2/ports.conf; \
     sed -i "s/<VirtualHost \*:80>/<VirtualHost \*:8080>/g" /etc/apache2/sites-available/000-default.conf; \
-    echo "display_errors = Off" > /usr/local/etc/php/conf.d/tao-errors.ini; \
-    echo "error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT & ~E_NOTICE" >> /usr/local/etc/php/conf.d/tao-errors.ini; \
+    \
     if [ ! -f /var/www/html/config/generis/database.conf.php ]; then \
-        echo "Inizio installazione TAO..."; \
+        echo "Inizio installazione pulita di TAO..."; \
         php /var/www/html/tao/scripts/taoInstall.php \
         --db_driver pdo_mysql \
         --db_host ${MYSQLHOST} \
@@ -77,11 +45,7 @@ CMD rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_wo
         --user_login admin \
         --user_pass admin \
         -vvv -e taoCe,taoInvalsi; \
-    else \
-        echo "TAO già configurato. Pulizia cache..."; \
-        rm -rf /var/www/html/data/generis/cache/* || true; \
     fi; \
-    chown -R www-data:www-data /var/www/html/data /var/www/html/config /var/www/html/models; \
-    chmod -R 775 /var/www/html/data /var/www/html/config; \
+    \
     echo "Avvio Apache sulla porta 8080..."; \
     apache2-foreground
