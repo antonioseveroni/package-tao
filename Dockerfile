@@ -8,16 +8,8 @@ ENV NODE_VERSION=14.21.3
 
 # 2. Installazione dipendenze di sistema
 RUN apt-get update && apt-get install -y \
-    git \
-    unzip \
-    libzip-dev \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    curl \
-    libxml2-dev \
-    libicu-dev \
-    libonig-dev \
+    git unzip libzip-dev libpng-dev libjpeg-dev libfreetype6-dev \
+    curl libxml2-dev libicu-dev libonig-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # 3. Estensioni PHP
@@ -33,13 +25,18 @@ ENV PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 # 5. Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 6. Directory di lavoro
+# 6. Directory di lavoro e copia file
 WORKDIR /var/www/html
 COPY . .
 
-# 7. Dipendenze applicazione
+# 7. Installazione dipendenze e MODIFICA MANIFEST
 RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
-    composer install --no-dev --optimize-autoloader --no-interaction
+    composer install --no-dev --optimize-autoloader --no-interaction && \
+    # --- MODIFICA MANIFEST: Commentiamo la riga taoTextHelp ---
+    if [ -f /var/www/html/taoInvalsi/manifest.php ]; then \
+        sed -i "s/.*'taoTextHelp'.*/\/\/&/" /var/www/html/taoInvalsi/manifest.php; \
+        echo "Manifest taoInvalsi modificato: taoTextHelp commentato."; \
+    fi
 
 # 8. Abilita Rewrite
 RUN a2enmod rewrite
@@ -48,18 +45,15 @@ RUN a2enmod rewrite
 RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 775 /var/www/html/data /var/www/html/config
 
-# 10. CMD: Configurazione PHP per nascondere i warning e avvio
+# 10. CMD: Script di avvio finale
 CMD rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* || true; \
     a2enmod mpm_prefork || true; \
     sed -i "s/Listen 80/Listen 8080/g" /etc/apache2/ports.conf; \
     sed -i "s/<VirtualHost \*:80>/<VirtualHost \*:8080>/g" /etc/apache2/sites-available/000-default.conf; \
     echo "display_errors = Off" > /usr/local/etc/php/conf.d/tao-errors.ini; \
     echo "error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT & ~E_NOTICE" >> /usr/local/etc/php/conf.d/tao-errors.ini; \
-    if [ -f /var/www/html/config/generis/database.conf.php ]; then \
-        echo "Tabelle trovate. Pulizia cache..."; \
-        rm -rf /var/www/html/data/generis/cache/* || true; \
-    else \
-        echo "Inizio installazione TAO con estensione INVALSI..."; \
+    if [ ! -f /var/www/html/config/generis/database.conf.php ]; then \
+        echo "Inizio installazione TAO..."; \
         php /var/www/html/tao/scripts/taoInstall.php \
         --db_driver pdo_mysql \
         --db_host ${MYSQLHOST} \
@@ -72,6 +66,9 @@ CMD rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_wo
         --user_login admin \
         --user_pass admin \
         -vvv -e taoCe,taoInvalsi; \
+    else \
+        echo "TAO già configurato. Pulizia cache..."; \
+        rm -rf /var/www/html/data/generis/cache/* || true; \
     fi; \
     chown -R www-data:www-data /var/www/html/data /var/www/html/config /var/www/html/models; \
     chmod -R 775 /var/www/html/data /var/www/html/config; \
