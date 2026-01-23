@@ -32,11 +32,19 @@ WORKDIR /var/www/html
 
 COPY . .
 
+# Crea le cartelle necessarie prima di composer install
+RUN mkdir -p data config/generis && \
+    chmod -R 775 data config
+
+
 # Configurazione Git e Installazione dipendenze
 RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
     git config --global url."https://".insteadOf "git://" && \
     rm -f composer.lock && \
     composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+
+# Esegui gli script post-install di composer
+RUN composer run-script post-install-cmd || true
 
 RUN a2enmod rewrite && \
     chown -R www-data:www-data /var/www/html && \
