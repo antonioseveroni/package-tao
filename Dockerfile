@@ -56,6 +56,6 @@ CMD sed -i "s/Listen 80/Listen 8080/g" /etc/apache2/ports.conf; \
         --module_url https://${RAILWAY_STATIC_URL:-localhost} \
         --user_login admin \
         --user_pass admin \
-        -vvv -e taoCe,taoInvalsi; \
+        -vvv -e taoCe; \
     fi; \
     apache2-foreground
