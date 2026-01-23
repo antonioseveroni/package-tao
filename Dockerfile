@@ -27,7 +27,8 @@ WORKDIR /var/www/html
 COPY . .
 
 # Install dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+COPY composer-setup.sh .
+RUN chmod +x composer-setup.sh && ./composer-setup.sh
 
 # Apache configuration
 RUN a2enmod rewrite
