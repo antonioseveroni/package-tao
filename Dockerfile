@@ -1,8 +1,8 @@
 FROM php:8.1-apache
 
-# Dichiarazione ARG obbligatoria per Railway
-ARG GITHUB_TOKEN
-ENV GITHUB_TOKEN=$GITHUB_TOKEN
+# Usa COMPOSER_AUTH invece di GITHUB_TOKEN
+ARG COMPOSER_AUTH
+ENV COMPOSER_AUTH=$COMPOSER_AUTH
 
 RUN apt-get update && apt-get install -y \
     git unzip libzip-dev libpng-dev libjpeg-dev libfreetype6-dev \
@@ -15,12 +15,12 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
+
 COPY . .
 
-# 5. Configurazione Auth e Installazione dipendenze
-RUN mkdir -p /root/.composer && \
-    git config --global url."https://github.com/".insteadOf "git@github.com:" && \
-    composer config --global github-oauth.github.com "$GITHUB_TOKEN" && \
+# Configurazione Git e Installazione dipendenze
+RUN git config --global url."https://github.com/".insteadOf "git@github.com:" && \
+    git config --global url."https://".insteadOf "git://" && \
     rm -f composer.lock && \
     composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
