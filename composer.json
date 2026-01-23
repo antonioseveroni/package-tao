@@ -1,29 +1,61 @@
 {
   "name": "oat-sa/tao-package",
-  "description": "TAO is an Open Source Assessment platform that empowers you to build, deliver, and share innovative and engaging assessments online \u2013 in any language or subject matter.",
+  "description": "TAO is an Open Source Assessment platform...",
   "license": "GPL-2.0-only",
-  "support": {
-    "issues": "http://forge.taotesting.com",
-    "forum": "https://forum.taotesting.com"
-  },
-  "authors": [
+  "repositories": [
     {
-      "homepage": "http://www.taotesting.com",
-      "name": "Open Assessment Technologies S.A."
+      "type": "vcs",
+      "url": "https://github.com/oat-sa/spout.git"
+    },
+    {
+      "type": "vcs",
+      "url": "https://github.com/INVALSI/TAO-INVALSI-CUSTOMIZATION.git"
     }
   ],
-  "keywords": [
-    "TAO Community - Open Source Assessment Software ",
-    "Tao",
-    "oat",
-    "open source",
-    "release 4.0",
-    "computer-based-assessment"
-  ],
-  "homepage": "http://www.taotesting.com",
-  "minimum-stability": "stable",
-  "prefer-stable": true,
   "require": {
-    "oat-sa/tao-community": "2022.11.6"
+    "oat-sa/generis": "15.22.0.1 as 15.22.0",
+    "oat-sa/tao-core": "50.25.1.7 as 50.25.1",
+    "oat-sa/extension-tao-funcacl": "7.2.2.0 as 7.2.2",
+    "oat-sa/extension-tao-community": "10.3.1.0 as 10.3.1",
+    "oat-sa/extension-tao-backoffice": "6.11.3.0 as 6.11.3",
+    "oat-sa/extension-tao-dac-simple": "7.7.4.0 as 7.7.4",
+    "oat-sa/extension-tao-group": "7.6.3.0 as 7.6.3",
+    "oat-sa/extension-tao-item": "11.31.4.0 as 11.31.4",
+    "oat-sa/extension-tao-itemqti": "29.14.4.12 as 29.14.4",
+    "oat-sa/extension-tao-itemqti-pci": "8.5.2.0 as 8.5.2",
+    "oat-sa/extension-tao-test": "15.15.1.0 as 15.15.1",
+    "oat-sa/extension-tao-testqti": "44.22.8.0 as 44.22.8",
+    "oat-sa/extension-tao-testqti-previewer": "3.7.3.0 as 3.7.3",
+    "oat-sa/extension-tao-testtaker": "8.9.3.0 as 8.9.3",
+    "oat-sa/extension-tao-outcome": "13.2.3.0 as 13.2.3",
+    "oat-sa/extension-tao-outcomeui": "11.1.10.0 as 11.1.10",
+    "oat-sa/extension-tao-outcomerds": "8.2.2.0 as 8.2.2",
+    "oat-sa/extension-tao-delivery": "15.13.1.0 as 15.13.1",
+    "oat-sa/extension-tao-delivery-rdf": "14.16.3.0 as 14.16.3",
+    "oat-sa/extension-tao-lti": "15.9.2.0 as 15.9.2",
+    "oat-sa/extension-tao-mediamanager": "12.32.5.0 as 12.32.5",
+    "oat-sa/extension-pcisample": "3.6.5.0 as 3.6.5",
+    "oat-sa/extension-tao-clientdiag": "8.4.6.0 as 8.4.6",
+    "oat-sa/extension-tao-task-queue": "6.6.3.0 as 6.6.3",
+    "oat-sa/extension-tao-booklet": "4.1.1.0 as 4.1.1",
+    "oat-sa/extension-tao-monitoring": "4.0.1.0 as 4.0.1",
+    "oat-sa/extension-tao-publishing": "6.4.2.0 as 6.4.2",
+    "oat-sa/extension-tao-qtiprint": "2.0.2.0 as 2.0.2",
+    "oat-sa/extension-tao-result-export": "1.0.2.0 as 1.0.2",
+    "oat-sa/extension-tao-scheduler": "3.0.2.0 as 3.0.2",
+    "oat-sa/extension-tao-system-status": "0.13.1.0 as 0.13.1",
+    "oat-sa/extension-tao-test-runner-plugins": "3.6.5.1 as 3.6.5",
+    "oat-sa/extension-tao-xmledit": "3.3.0.0 as 3.3.0",
+    "oat-sa/extension-tao-xmledit-responseprocessing": "1.2.0.0 as 1.2.0",
+    "oat-sa/spout": "2.7.3",
+    "oat-sa/extension-tao-invalsi": "10.9.2.1"
+  },
+  "config": {
+    "platform": { "php": "8.1" },
+    "allow-plugins": {
+      "oat-sa/oatbox-extension-installer": true,
+      "oat-sa/composer-npm-bridge": true,
+      "php-http/discovery": true
+    }
   }
 }
