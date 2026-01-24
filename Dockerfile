@@ -74,11 +74,15 @@ rm -f /etc/apache2/mods-enabled/mpm_event.load \
 a2enmod mpm_prefork 2>/dev/null || true
 
 # Sostituisci il vecchio blocco IF con questo:
-if [ ! -f /var/www/html/config/generis/database.conf.php ]; then
-    echo "Configurazione non trovata o incompleta. Reset cartelle..."    
-    rm -f /var/www/html/config/generis/*.php 
+# Script di avvio aggiornato
+if [ ! -f /var/www/html/config/generis/database.conf.php ] || [ ! -f /var/www/html/config/tao/SessionCookieService.conf.php ]; then
+    echo "Installazione incompleta rilevata. Reset totale..."
+    
+    # Pulizia totale configurazioni e cache
+    rm -rf /var/www/html/config/*
     rm -rf /var/www/html/data/generis/cache/*
     
+    # Riesegui l'installazione
     php /var/www/html/tao/scripts/taoInstall.php \
     --db_driver pdo_mysql \
     --db_host ${MYSQLHOST} \
