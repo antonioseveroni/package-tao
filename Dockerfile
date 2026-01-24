@@ -30,6 +30,10 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
+# Disabilita la visualizzazione degli errori nell'output (va nei log di Railway invece)
+RUN echo "display_errors = Off" >> /usr/local/etc/php/conf.d/docker-php-errors.ini && \
+    echo "error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT" >> /usr/local/etc/php/conf.d/docker-php-errors.ini
+    
 COPY . .
 
 # Crea le cartelle necessarie prima di composer install
