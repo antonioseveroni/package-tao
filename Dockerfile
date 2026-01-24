@@ -59,30 +59,21 @@ RUN rm -f /etc/apache2/mods-enabled/mpm_event.load \
     sed -i "s/Listen 80/Listen 8080/g" /etc/apache2/ports.conf && \
     sed -i "s/<VirtualHost \*:80>/<VirtualHost \*:8080>/g" /etc/apache2/sites-available/000-default.conf
 
-# Script di avvio
-# Script di avvio
 COPY <<'EOF' /start.sh
 #!/bin/bash
 
-# Disabilita forzatamente tutti gli MPM tranne prefork
-rm -f /etc/apache2/mods-enabled/mpm_event.load \
-      /etc/apache2/mods-enabled/mpm_event.conf \
-      /etc/apache2/mods-enabled/mpm_worker.load \
-      /etc/apache2/mods-enabled/mpm_worker.conf
-
-# Assicurati che mpm_prefork sia abilitato
+# 1. Pulizia MPM Apache
+rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.*
 a2enmod mpm_prefork 2>/dev/null || true
 
-# Sostituisci il vecchio blocco IF con questo:
-# Script di avvio aggiornato
-if [ ! -f /var/www/html/config/generis/database.conf.php ] || [ ! -f /var/www/html/config/tao/SessionCookieService.conf.php ]; then
-    echo "Installazione incompleta rilevata. Reset totale..."
-    
-    # Pulizia totale configurazioni e cache
-    rm -rf /var/www/html/config/*
+# 2. IL FIX: Se il database è vuoto o manca il servizio sessione, pialla tutto e reinstalla
+if [ ! -f /var/www/html/config/tao/SessionCookieService.conf.php ]; then
+    echo "Rilevata installazione corrotta o mancante. Reset delle configurazioni..."
+    rm -f /var/www/html/config/generis/database.conf.php
+    rm -f /var/www/html/config/generis/filesystem.conf.php
     rm -rf /var/www/html/data/generis/cache/*
-    
-    # Riesegui l'installazione
+
+    echo "Esecuzione taoInstall.php..."
     php /var/www/html/tao/scripts/taoInstall.php \
     --db_driver pdo_mysql \
     --db_host ${MYSQLHOST} \
@@ -94,15 +85,13 @@ if [ ! -f /var/www/html/config/generis/database.conf.php ] || [ ! -f /var/www/ht
     --module_url https://${RAILWAY_STATIC_URL:-localhost} \
     --user_login admin \
     --user_pass admin \
-    -vvv -e taoCe
+    -vvv -e taoCe,taoInvalsi
+else
+    echo "Installazione esistente rilevata. Ottimizzazione cache..."
+    php /var/www/html/tao/scripts/taoUpdate.php -vv || true
 fi
 
-# Verifica e rigenera la cache se necessario
-if [ -f /var/www/html/config/generis/database.conf.php ]; then
-    cd /var/www/html
-    php tao/scripts/taoUpdate.php -vv || true
-fi
-
+chown -R www-data:www-data /var/www/html
 apache2-foreground
 EOF
 
