@@ -64,24 +64,23 @@ RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \
     sed -i "s/Listen 80/Listen 8080/g" /etc/apache2/ports.conf && \
     sed -i "s/<VirtualHost \*:80>/<VirtualHost \*:8080>/g" /etc/apache2/sites-available/000-default.conf
 
+# ... (parte iniziale del Dockerfile invariata) ...
+
 COPY <<'EOF' /start.sh
 #!/bin/bash
 
-# 1. Configurazione dinamica porta Railway
+# 1. Configurazione porta Railway
 sed -i "s/Listen 8080/Listen ${PORT:-8080}/g" /etc/apache2/ports.conf
 sed -i "s/<VirtualHost \*:8080>/<VirtualHost \*:${PORT:-8080}>/g" /etc/apache2/sites-available/000-default.conf
 
-# 2. Pulizia MPM Apache
+# 2. Fix Apache MPM
 rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.*
 a2enmod mpm_prefork 2>/dev/null || true
 
-# 3. INSTALLAZIONE CORE (taoCe)
+# 3. Installazione Core taoCe
 if [ ! -f /var/www/html/config/tao/SessionCookieService.conf.php ]; then
-    echo "Rilevata installazione corrotta o mancante. Reset..."
+    echo "Installazione Core in corso..."
     rm -f /var/www/html/config/generis/database.conf.php
-    rm -rf /var/www/html/data/generis/cache/*
-
-    echo "Esecuzione taoInstall.php per il core..."
     php /var/www/html/tao/scripts/taoInstall.php \
     --db_driver pdo_mysql \
     --db_host ${MYSQLHOST} \
@@ -96,21 +95,23 @@ if [ ! -f /var/www/html/config/tao/SessionCookieService.conf.php ]; then
     -vvv -e taoCe
 fi
 
-# 4. INSTALLAZIONE taoInvalsi
-# Verifichiamo se l'estensione è già configurata
-if [ ! -d /var/www/html/config/taoInvalsi ]; then
-    echo "Tentativo di installazione estensione taoInvalsi..."
-    # Usiamo installExtension.php invece di rifare taoInstall
-    php /var/www/html/tao/scripts/installExtension.php taoInvalsi -vvv || echo "Errore durante l'installazione di taoInvalsi."
-    
-    # Pulizia cache e aggiornamento bundle post-installazione
-    php /var/www/html/tao/scripts/taoUpdate.php -vv || true
-else
-    echo "taoInvalsi risulta già installata."
+# 4. Installazione taoInvalsi con verifica cartella
+# Cerchiamo la cartella corretta (potrebbe chiamarsi taoInvalsi o TAO-INVALSI-CUSTOMIZATION)
+EXT_NAME="taoInvalsi"
+if [ ! -d "/var/www/html/$EXT_NAME" ]; then
+    # Se non esiste taoInvalsi, proviamo a vedere se la cartella è TAO-INVALSI-CUSTOMIZATION
+    if [ -d "/var/www/html/TAO-INVALSI-CUSTOMIZATION" ]; then
+        EXT_NAME="TAO-INVALSI-CUSTOMIZATION"
+    fi
 fi
 
+echo "Tentativo installazione estensione: $EXT_NAME"
+# Eseguiamo il comando forzando l'argomento tra virgolette per evitare l'errore "Usage"
+php /var/www/html/tao/scripts/installExtension.php "$EXT_NAME" && echo "Installazione $EXT_NAME completata." || echo "Errore installazione $EXT_NAME."
+
+# Pulizia finale
+php /var/www/html/tao/scripts/taoUpdate.php -vv || true
 chown -R www-data:www-data /var/www/html
-echo "Avvio Apache..."
 apache2-foreground
 EOF
 
