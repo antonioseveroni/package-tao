@@ -54,8 +54,9 @@ RUN a2enmod rewrite && \
     chown -R www-data:www-data /var/www/html && \
     chmod -R 775 /var/www/html/data /var/www/html/config
 
-# Configura Apache durante il build - Fix MPM
-RUN rm -f /etc/apache2/mods-enabled/mpm_event.load \
+# Configura Apache durante il build - Fix MPM e ServerName
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \
+    rm -f /etc/apache2/mods-enabled/mpm_event.load \
          /etc/apache2/mods-enabled/mpm_event.conf \
          /etc/apache2/mods-enabled/mpm_worker.load \
          /etc/apache2/mods-enabled/mpm_worker.conf && \
@@ -66,18 +67,21 @@ RUN rm -f /etc/apache2/mods-enabled/mpm_event.load \
 COPY <<'EOF' /start.sh
 #!/bin/bash
 
-# 1. Pulizia MPM Apache
+# 1. Configurazione dinamica porta Railway
+sed -i "s/Listen 8080/Listen ${PORT:-8080}/g" /etc/apache2/ports.conf
+sed -i "s/<VirtualHost \*:8080>/<VirtualHost \*:${PORT:-8080}>/g" /etc/apache2/sites-available/000-default.conf
+
+# 2. Pulizia MPM Apache
 rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.*
 a2enmod mpm_prefork 2>/dev/null || true
 
-# 2. IL FIX: Se il database è vuoto o manca il servizio sessione, pialla tutto e reinstalla
+# 3. INSTALLAZIONE CORE (taoCe)
 if [ ! -f /var/www/html/config/tao/SessionCookieService.conf.php ]; then
-    echo "Rilevata installazione corrotta o mancante. Reset delle configurazioni..."
+    echo "Rilevata installazione corrotta o mancante. Reset..."
     rm -f /var/www/html/config/generis/database.conf.php
-    rm -f /var/www/html/config/generis/filesystem.conf.php
     rm -rf /var/www/html/data/generis/cache/*
 
-    echo "Esecuzione taoInstall.php..."
+    echo "Esecuzione taoInstall.php per il core..."
     php /var/www/html/tao/scripts/taoInstall.php \
     --db_driver pdo_mysql \
     --db_host ${MYSQLHOST} \
@@ -90,17 +94,23 @@ if [ ! -f /var/www/html/config/tao/SessionCookieService.conf.php ]; then
     --user_login admin \
     --user_pass admin \
     -vvv -e taoCe
-else
-    echo "Installazione esistente rilevata. Ottimizzazione cache..."
-    php /var/www/html/tao/scripts/taoUpdate.php -vv || true
 fi
 
-echo "Controllo installazione taoInvalsi..."
-# Questo comando installa l'estensione se non è presente, 
-# ma non blocca l'avvio se fallisce (grazie a || true)
-php /var/www/html/tao/scripts/installExtension.php taoInvalsi -vvv || echo "Installazione taoInvalsi fallita o già presente."
+# 4. INSTALLAZIONE taoInvalsi
+# Verifichiamo se l'estensione è già configurata
+if [ ! -d /var/www/html/config/taoInvalsi ]; then
+    echo "Tentativo di installazione estensione taoInvalsi..."
+    # Usiamo installExtension.php invece di rifare taoInstall
+    php /var/www/html/tao/scripts/installExtension.php taoInvalsi -vvv || echo "Errore durante l'installazione di taoInvalsi."
+    
+    # Pulizia cache e aggiornamento bundle post-installazione
+    php /var/www/html/tao/scripts/taoUpdate.php -vv || true
+else
+    echo "taoInvalsi risulta già installata."
+fi
 
 chown -R www-data:www-data /var/www/html
+echo "Avvio Apache..."
 apache2-foreground
 EOF
 
