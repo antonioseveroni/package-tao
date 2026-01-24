@@ -90,7 +90,7 @@ if [ ! -f /var/www/html/config/generis/database.conf.php ]; then
     --module_url https://${RAILWAY_STATIC_URL:-localhost} \
     --user_login admin \
     --user_pass admin \
-    -vvv -e taoCe,taoInvalsi
+    -vvv -e taoCe
 fi
 
 # Verifica e rigenera la cache se necessario
