@@ -85,7 +85,7 @@ if [ ! -f /var/www/html/config/tao/SessionCookieService.conf.php ]; then
     --module_url https://${RAILWAY_STATIC_URL:-localhost} \
     --user_login admin \
     --user_pass admin \
-    -vvv -e taoCe,taoInvalsi
+    -vvv -e taoCe
 else
     echo "Installazione esistente rilevata. Ottimizzazione cache..."
     php /var/www/html/tao/scripts/taoUpdate.php -vv || true
