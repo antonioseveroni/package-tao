@@ -95,6 +95,11 @@ else
     php /var/www/html/tao/scripts/taoUpdate.php -vv || true
 fi
 
+echo "Controllo installazione taoInvalsi..."
+# Questo comando installa l'estensione se non è presente, 
+# ma non blocca l'avvio se fallisce (grazie a || true)
+php /var/www/html/tao/scripts/installExtension.php taoInvalsi -vvv || echo "Installazione taoInvalsi fallita o già presente."
+
 chown -R www-data:www-data /var/www/html
 apache2-foreground
 EOF
